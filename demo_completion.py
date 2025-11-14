@@ -2,27 +2,27 @@ import time
 import torch
 from transformers import AutoModel, AutoTokenizer
 
-
-def get_best_device():
+def select_device():
     if torch.cuda.is_available():
         return "cuda"
     mps_backend = getattr(torch.backends, "mps", None)
-    if mps_backend and mps_backend.is_available() and mps_backend.is_built():
+    if mps_backend is not None and mps_backend.is_available():
         return "mps"
     return "cpu"
 
-
-def get_preferred_dtype(device):
-    if device == "cuda":
-        return torch.bfloat16
-    if device == "mps":
-        return torch.float16
-    return torch.float32
+# --- Model Loading ---
+model_path = "Dream-org/Dream-v0-Instruct-7B"
+device = select_device()
+dtype_by_device = {
+    "cuda": torch.bfloat16,
+    "mps": torch.float16,
+    "cpu": torch.float32,
+}
+dtype = dtype_by_device[device]
+print(f"Using device: {device} (dtype={dtype})")
 
 model_path = "Dream-org/Dream-v0-Instruct-7B"
-device = get_best_device()
-dtype = get_preferred_dtype(device)
-print(f"Using device: {device} (dtype={dtype})")
+
 model = AutoModel.from_pretrained(model_path, torch_dtype=dtype, trust_remote_code=True)
 tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
 model = model.to(device).eval()

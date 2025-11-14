@@ -1,11 +1,63 @@
 import torch
 from transformers import AutoModel, AutoTokenizer
+
+
+def get_best_device():
+    if torch.cuda.is_available():
+        return "cuda"
+    mps_backend = getattr(torch.backends, "mps", None)
+    if mps_backend and mps_backend.is_available() and mps_backend.is_built():
+        return "mps"
+    return "cpu"
+
+
+def get_preferred_dtype(device):
+    if device == "cuda":
+        return torch.bfloat16
+    if device == "mps":
+        return torch.float16
+    return torch.float32
 import time
+
+
+def _sanitize_probabilities(probs: torch.Tensor) -> torch.Tensor:
+    """Keep multinomial inputs finite, non-negative, and normalized."""
+    if not torch.is_floating_point(probs):
+        return probs
+    sanitized = torch.nan_to_num(probs, nan=0.0, posinf=0.0, neginf=0.0)
+    sanitized = sanitized.clamp_min(0.0)
+    if sanitized.ndim == 1:
+        total = sanitized.sum()
+        if total <= 0:
+            return torch.full_like(sanitized, 1.0 / sanitized.numel())
+        return sanitized / total
+    total = sanitized.sum(dim=-1, keepdim=True)
+    zero_mask = total <= 0
+    if zero_mask.any():
+        sanitized = sanitized.clone()
+        sanitized[zero_mask.squeeze(-1)] = 1.0
+        total = sanitized.sum(dim=-1, keepdim=True)
+    return sanitized / total
+
+
+_original_multinomial = torch.multinomial
+
+
+def _safe_multinomial(probs, num_samples, replacement=False, *, generator=None, out=None):
+    normalized = _sanitize_probabilities(probs)
+    return _original_multinomial(normalized, num_samples, replacement, generator=generator, out=out)
+
+
+if not getattr(torch.multinomial, "_dream_safe", False):
+    _safe_multinomial._dream_safe = True  # type: ignore[attr-defined]
+    torch.multinomial = _safe_multinomial  # type: ignore[assignment]
 # Load model and tokenizer
 model_path = "Dream-org/Dream-v0-Instruct-7B"
-model = AutoModel.from_pretrained(model_path, torch_dtype=torch.bfloat16, trust_remote_code=True)
+device = get_best_device()
+dtype = get_preferred_dtype(device)
+model = AutoModel.from_pretrained(model_path, torch_dtype=dtype, trust_remote_code=True)
 tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-model = model.to("cuda").eval()
+model = model.to(device).eval()
 
 # Initialize conversation history
 messages = []
@@ -30,8 +82,8 @@ while True:
     inputs = tokenizer.apply_chat_template(
         messages, return_tensors="pt", return_dict=True, add_generation_prompt=True
     )
-    input_ids = inputs.input_ids.to(device="cuda")
-    attention_mask = inputs.attention_mask.to(device="cuda")
+    input_ids = inputs.input_ids.to(device)
+    attention_mask = inputs.attention_mask.to(device)
 
     def generation_tokens_hook_func(step, x, logits):
         print(f"############ Step {step} ############")
