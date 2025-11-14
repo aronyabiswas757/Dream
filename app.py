@@ -64,6 +64,10 @@ def add_user_message_to_gradio_history(history, message):
         history = []
     return history + [[message, None]]
 
+
+def highlight_message(message, color="#CC6666"):
+    return [(message, color)]
+
 # --- Modified Main Generation Function with Real-Time Visualization ---
 def dream_generate_with_visualization(history, max_new_tokens, steps, temperature, top_p, top_k, delay, alg, alg_temp):
     print("\n--- Starting dream_generate_with_visualization ---")
@@ -87,7 +91,7 @@ def dream_generate_with_visualization(history, max_new_tokens, steps, temperatur
             current_history[-1][1] = f"Error: {error_message}"
         else:
             current_history = [["System", f"Error: {error_message}"]]
-        yield format_gradio_history_to_messages(current_history), error_message, current_history
+        yield format_gradio_history_to_messages(current_history), highlight_message(error_message), current_history
         return
 
     # save histories
@@ -172,7 +176,7 @@ def dream_generate_with_visualization(history, max_new_tokens, steps, temperatur
             current_history[-1][1] = f"Error: {error_message}"
         else:
             current_history = [["System", f"Error: {error_message}"]]
-        yield format_gradio_history_to_messages(current_history), error_message, current_history
+        yield format_gradio_history_to_messages(current_history), highlight_message(error_message), current_history
         return
 
     # --- final result processing ---
@@ -201,7 +205,7 @@ def dream_generate_with_visualization(history, max_new_tokens, steps, temperatur
             current_history[-1][1] = f"Error processing output: {error_message}"
         else:
             current_history = [["System", f"Error processing output: {error_message}"]]
-        yield format_gradio_history_to_messages(current_history), error_message, current_history
+        yield format_gradio_history_to_messages(current_history), highlight_message(error_message), current_history
 
     print("--- Exiting dream_generate_with_visualization normally ---")
 
@@ -209,7 +213,7 @@ def dream_generate_with_visualization(history, max_new_tokens, steps, temperatur
 def bot_response_generator(history, max_new_tokens, steps, temperature, top_p, top_k, delay, alg, alg_temp):
     if not history or history[-1][1] is not None:
         print("Skipping bot response: No history or last message already has a response.")
-        yield format_gradio_history_to_messages(history), "", history
+        yield format_gradio_history_to_messages(history), [], history
         return
     yield from dream_generate_with_visualization(history, max_new_tokens, steps, temperature, top_p, top_k, delay, alg, alg_temp)
 
@@ -258,7 +262,7 @@ with gr.Blocks(css=css, theme=gr.themes.Soft()) as demo:
     clear_button = gr.Button("Clear Chat")
 
     def clear_conversation():
-        return [], [], "", ""
+        return [], [], "", []
 
     clear_button.click(
         fn=clear_conversation,
@@ -282,11 +286,11 @@ with gr.Blocks(css=css, theme=gr.themes.Soft()) as demo:
     )
 
     submit_action = user_input_textbox.submit(**submit_event_args)
-    submit_action.then(lambda: "", inputs=None, outputs=[vis_output_display])
+    submit_action.then(lambda: [], inputs=None, outputs=[vis_output_display])
     submit_action.then(**bot_response_event_args)
 
     send_action = send_button.click(**submit_event_args)
-    send_action.then(lambda: "", inputs=None, outputs=[vis_output_display])
+    send_action.then(lambda: [], inputs=None, outputs=[vis_output_display])
     send_action.then(**bot_response_event_args)
 
 if __name__ == "__main__":
