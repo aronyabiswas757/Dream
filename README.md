@@ -11,10 +11,6 @@
 |---|---|---|
 | **Weights format** | BF16 HuggingFace checkpoint | GGUF (quantized, e.g. Q4_K_M) |
 | **VRAM required** | 20 GB+ | ~5–8 GB |
-| **Inference backend** | `transformers` + PyTorch | `llama-diffusion-cli` (llama.cpp) |
-| **UI** | CLI demos / HF Space | Gradio web UI |
-| **Real-time visualization** | ❌ | ✅ step-by-step token reveal |
-| **System prompt** | ❌ | ✅ |
 | **Stop / Retry** | ❌ | ✅ |
 
 ---
