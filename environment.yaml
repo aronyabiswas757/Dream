@@ -1,0 +1,47 @@
+name: dream_diff_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    # ── UI ──────────────────────────────────────────────────────────
+    - gradio==6.6.0
+    - gradio-client==2.1.0
+
+    # ── GPU detection (torch.cuda.get_device_name) ──────────────────
+    # Inference itself runs via llama-diffusion-cli.exe, NOT Python.
+    # torch is only needed here; install with the CUDA index below.
+    - torch==2.5.1+cu124
+
+    # ── Gradio transitive deps ───────────────────────────────────────
+    - numpy==2.4.2
+    - pillow==12.1.1
+    - fastapi==0.133.0
+    - uvicorn==0.41.0
+    - starlette==0.52.1
+    - pydantic==2.12.5
+    - pydantic-core==2.41.5
+    - anyio==4.12.1
+    - httpx==0.28.1
+    - aiofiles==24.1.0
+    - python-multipart==0.0.22
+    - orjson==3.11.7
+    - rich==14.3.3
+    - typer==0.24.1
+    - click==8.3.1
+    - colorama==0.4.6
+
+    # ── General utilities ────────────────────────────────────────────
+    - requests==2.32.5
+    - tqdm==4.67.3
+    - psutil==7.2.2
+    - pyyaml==6.0.3
+    - filelock==3.24.3
+    - packaging==26.0
+    - regex==2026.2.19
+
+# ── PyTorch CUDA index (required for cu124 wheels) ──────────────────
+# After creating the env, run:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
