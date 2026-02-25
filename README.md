@@ -115,7 +115,7 @@ You should see usage output listing `--diffusion-steps`, `--diffusion-algorithm`
 
 ---
 
-### 4. Edit paths in `app.py`
+### 4. Edit paths in `app_gguf.py`
 
 ```python
 LLAMA_DIFFUSION_CLI_PATH = r"C:\path\to\llama-diffusion-cli.exe"
@@ -125,7 +125,7 @@ MODEL_PATH               = r"C:\path\to\Dream-org_Dream-v0-Instruct-7B-Q4_K_M.gg
 ### 4. Run
 
 ```bash
-python app.py
+python app_gguf.py
 # → http://localhost:7860
 ```
 
@@ -149,7 +149,7 @@ python app.py
 
 ```
 Dream-main/
-├── app.py               # Main Gradio application (this fork)
+├── app_gguf.py               # Main Gradio application (this fork)
 ├── environment.yaml     # Conda environment spec
 ├── README.md            # This file
 ├── debug.py             # Standalone debug/test script
