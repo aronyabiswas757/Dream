@@ -1,134 +1,165 @@
-# Dream 7B
-[![Static Badge](https://img.shields.io/badge/📰-Blog-red)](https://hkunlp.github.io/blog/2025/dream/)
-[![Static Badge](https://img.shields.io/badge/📰-Report-yellow)](https://arxiv.org/abs/2508.15487)
-[![Static Badge](https://img.shields.io/badge/📰-Demo-green)](https://huggingface.co/spaces/multimodalart/Dream)
-[![Static Badge](https://img.shields.io/badge/Hugging%20Face%20🤗-Dream%207B_Base-blue)
-](https://huggingface.co/Dream-org/Dream-v0-Base-7B)
-[![Static Badge](https://img.shields.io/badge/Hugging%20Face%20🤗-Dream%207B_Instruct-blue)](https://huggingface.co/Dream-org/Dream-v0-Instruct-7B)
+# 🧠 Dream Diffusion — GGUF Inference UI
 
-Dream is a 7B diffusion large language model that achieves competitive performance comparable to leading autoregressive models with a similar size.
+> **Fork of [DreamLM/Dream](https://github.com/DreamLM/Dream)**  
+> The original repo targets BF16 full-precision weights (~20 GB VRAM). This fork replaces the Python inference stack with [`llama-diffusion-cli`](https://github.com/ggml-org/llama.cpp) to load **4-bit GGUF-quantized** weights, bringing the memory requirement down to **~5–8 GB VRAM**.
 
+---
 
-## News
-- [2025-09-26]: We release the training code for Dream, and you can easily fine-tune on your own dataset. Additionally, the training and evaluation code for [Dream-Coder](https://github.com/DreamLM/Dream-Coder) and [DreamOn](https://github.com/DreamLM/DreamOn) are all available now.
-- [2025-07-15]: We release [Dream-Coder](https://github.com/DreamLM/Dream-Coder) and [DreamOn](https://github.com/DreamLM/DreamOn):
-   - Dream-Coder is a fully open 7B dLLM for code, delivering strong performance, trained exclusively on public data.  
-   - DreamOn tackles the variable-length generation and infilling problem in dLLMs.
-- [2025-06-04]: Dream-Instruct eval code is released.
-- [2025-05-03]: Dream-Base eval code is released.
-- [2025-04-05]: Dream checkpoints and inference code are released.
-- [2025-04-02]: Dream blog is released.
+## Differences from upstream
 
+| | [DreamLM/Dream](https://github.com/DreamLM/Dream) (original) | This fork |
+|---|---|---|
+| **Weights format** | BF16 HuggingFace checkpoint | GGUF (quantized, e.g. Q4_K_M) |
+| **VRAM required** | 20 GB+ | ~5–8 GB |
+| **Inference backend** | `transformers` + PyTorch | `llama-diffusion-cli` (llama.cpp) |
+| **UI** | CLI demos / HF Space | Gradio web UI |
+| **Real-time visualization** | ❌ | ✅ step-by-step token reveal |
+| **System prompt** | ❌ | ✅ |
+| **Stop / Retry** | ❌ | ✅ |
 
-## Installation
-Our implementation of Dream is based on the [Huggingface `transformers`](https://github.com/huggingface/transformers) library. You should first install transformers by `pip install transformers==4.46.2` and `torch==2.5.1` as Dream uses the [SdpaAttention](https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html) built in torch. Other versions of transformers and torch are not been fully tested.
+---
 
-Run the model requires a GPU with at least 20GB memory. 
+## ✨ Features
 
-Thanks [Apolinário](https://github.com/apolinario) for providing the online demo at https://huggingface.co/spaces/multimodalart/Dream.
+- 🔁 **Real-time diffusion visualization** — watch tokens get revealed step-by-step
+- 🧩 **System prompt** — set a persistent persona for the model
+- ⏹ **Stop button** — cancel mid-generation instantly
+- 🔁 **Retry button** — regenerate the last response without retyping
+- 📊 **Stats panel** — elapsed time, step count, word count per response
+- 🎨 **Dark UI** — custom dark-themed Gradio interface
+- 🖥️ **Auto GPU detection** — header shows your actual GPU name
 
-## Usage
-We provide several demos to show the inference code of Dream. A simple implementation is:
+---
+
+## 🖥️ Requirements
+
+| Component | Requirement |
+|---|---|
+| OS | Windows 10/11 (Linux should work with path changes) |
+| GPU | NVIDIA GPU with CUDA support (8 GB VRAM recommended) |
+| CUDA | 12.4 (`cu124`) |
+| Python | 3.11 |
+| Conda | Anaconda / Miniconda |
+
+### External dependencies (not in pip)
+
+- **`llama-diffusion-cli.exe`** — Build from the `diffusion` branch of [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
+- **GGUF model file** — Download from HuggingFace:  
+  [`bartowski/Dream-org_Dream-v0-Instruct-7B-GGUF`](https://huggingface.co/bartowski/Dream-org_Dream-v0-Instruct-7B-GGUF)  
+  Recommended quant: `Dream-org_Dream-v0-Instruct-7B-Q4_K_M.gguf`
+
+---
+
+## 🚀 Installation
+
+### 1. Clone this repo
+
+```bash
+git clone https://github.com/your-username/Dream-main.git
+cd Dream-main
+```
+
+### 2. Create the conda environment
+
+```bash
+conda env create -f environment.yaml
+conda activate dream_diff_env
+```
+
+> **Tip:** If PyTorch isn't picking up CUDA, reinstall with the correct index:
+> ```bash
+> pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+> ```
+
+### 3. Build `llama-diffusion-cli`
+
+This is the C++ binary that actually runs inference. It is **not on PyPI** — you must compile it from the `llama.cpp` source.
+
+#### Prerequisites
+
+| Tool | Notes |
+|---|---|
+| [Git](https://git-scm.com/) | For cloning the repo |
+| [Visual Studio 2022](https://visualstudio.microsoft.com/vs/community/) | Select **"Desktop development with C++"** workload; make sure **"C++ CMake tools for Windows"** is included |
+| [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) | Match your driver version; CUDA 12.x recommended |
+| CMake 3.21+ | Included with VS2022, or install from [cmake.org](https://cmake.org/download/) |
+
+#### Build steps (PowerShell / Developer Command Prompt)
+
+```powershell
+# 1. Clone llama.cpp (main branch — diffusion support is merged in)
+git clone https://github.com/ggml-org/llama.cpp
+cd llama.cpp
+
+# 2. Configure with CMake — enable CUDA
+cmake -B build -S . `
+    -DGGML_CUDA=ON `
+    -DCMAKE_BUILD_TYPE=Release
+
+# 3. Build (adjust -j to your CPU core count)
+cmake --build build --config Release -j 4
+
+# 4. The binary will be at:
+#    build\bin\Release\llama-diffusion-cli.exe
+```
+
+> **Tip:** If CMake can't find CUDA, open a **Developer Command Prompt for VS 2022** (Start menu) instead of a plain PowerShell — it sets the required MSVC and CUDA environment variables automatically.
+
+#### Verify the build
+
+```powershell
+.\build\bin\Release\llama-diffusion-cli.exe --help
+```
+
+You should see usage output listing `--diffusion-steps`, `--diffusion-algorithm`, etc.
+
+---
+
+### 4. Edit paths in `app.py`
+
 ```python
-import torch
-from transformers import AutoModel, AutoTokenizer
-
-model_path = "Dream-org/Dream-v0-Instruct-7B"
-model = AutoModel.from_pretrained(model_path, torch_dtype=torch.bfloat16, trust_remote_code=True)
-tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-model = model.to("cuda").eval()
-
-messages = [
-    {"role": "user", "content": "Please write a Python class that implements a PyTorch trainer capable of training a model on a toy dataset."}
-]
-inputs = tokenizer.apply_chat_template(
-    messages, return_tensors="pt", return_dict=True, add_generation_prompt=True
-)
-input_ids = inputs.input_ids.to(device="cuda")
-attention_mask = inputs.attention_mask.to(device="cuda")
-
-output = model.diffusion_generate(
-    input_ids,
-    attention_mask=attention_mask,
-    max_new_tokens=512,
-    output_history=True,
-    return_dict_in_generate=True,
-    steps=512,
-    temperature=0.2,
-    top_p=0.95,
-    alg="entropy",
-    alg_temp=0.,
-)
-generations = [
-    tokenizer.decode(g[len(p) :].tolist())
-    for p, g in zip(input_ids, output.sequences)
-]
-
-print(generations[0].split(tokenizer.eos_token)[0])
+LLAMA_DIFFUSION_CLI_PATH = r"C:\path\to\llama-diffusion-cli.exe"
+MODEL_PATH               = r"C:\path\to\Dream-org_Dream-v0-Instruct-7B-Q4_K_M.gguf"
 ```
 
-### Gradio demo
+### 4. Run
 
-First, install [Gradio](https://www.gradio.app) `pip install gradio`, and then you can directly run `python app.py`
-<div style="display: flex; justify-content: center; flex-wrap: wrap;">
-    <img src="./imgs/example_gradio.gif" style="width: 80%" />
-</div>
-
-## Parameters of `diffusion_generate()` 
-
- `model.diffusion_generate()` supports a subset of arguments in `model.generate()` and some diffusion-specific arguments:
-- `input_ids`: The input token ids.
-- `attention_mask`: The attention mask when performing batch inference.
-- `max_new_tokens`: The maximum tokens to generate. Note that the context length (input+output) of Dream currently is 2048.
-- `output_history`: Whether to return the output at each intermediate step.
-- `return_dict_in_generate`: The output format, mostly set to True.
-- `steps`: The diffusion timesteps. `max_new_tokens`/`steps` tokens will be generated at each step. Fewer steps yield faster but coarser results.
-- `temperature`: The value used to module the next token probabilities. By default 0.0. The smaller the value, the more accurate the results (e.g., in math or coding). The larger the value, the more diverse the results (e.g., in general conversation). If you notice repeated results, you might consider increasing the temperature.
-- `top_p`: If set to float < 1, only the smallest set of most probable tokens with probabilities that add up to top_p or higher are kept for generation. By default None. Control the diversity of generation. 
-- `top_k`: The number of highest probability vocabulary tokens to keep for top-k-filtering. By default None. Control the diversity of generation.
-- `alg`: The remasking strategy in diffusion sampling, controlling the token generation order. Support one random strategy and three confidence-based strategies:
-    - `origin`: Token will be generated in a purely random order from https://arxiv.org/abs/2107.03006. The default strategy. Note this may degrade performance in some tasks.
-    - `maskgit_plus`: Token will be generated based on the top1 confidence from https://arxiv.org/abs/2202.04200. 
-    - `topk_margin`: Token will be generated based on the margin confidence by taking `top1 - top2` from https://arxiv.org/abs/2502.06768. 
-    - `entropy`: Token will be generated based on the entropy of each token distribution. 
-- `alg_temp`: Add some randomness to `alg` when using confidence-based strategies. By default None. 
-- `generation_logits_hook_func`: a hook that can be user-defined to control the logits at each intermediate step, e.g., do some guidance.
-- `generation_tokens_hook_func`: a hook that can be user-defined to control the tokens at each intermediate step, e.g., print, infill, or other token control strategies. See `demo_token_control.py` for reference.
-
-
-## Evaluation
-The evaluation is based on [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness), so you should first install it with:
-```
-git clone --depth 1 https://github.com/EleutherAI/lm-evaluation-harness
-cd lm-evaluation-harness
-pip install -e .
-``` 
-Then, you can go to the `eval` directory and run the bash scripts.
-```
-cd eval
-
-# this scripts contains likelihood-based tasks: mmlu arc_easy arc_challenge hellaswag piqa gpqa_main_n_shot winogrande race
-bash eval_dream_gen_mc.sh
-
-# this scripts contains generation tasks: humaneval gsm8k_cot mbpp minerva_math bbh
-bash eval_dream_gen.sh
-
-# this scripts contains planning tasks: countdown, sudoku, trip-planning, their data are under `data`
-bash eval_dream_gen_planning.sh
+```bash
+python app.py
+# → http://localhost:7860
 ```
 
-## Fine-tuning
-You can perform SFT training on a single node with 8 GPUs with:
+---
+
+## ⚙️ Generation Parameters
+
+| Parameter | Description | Recommended |
+|---|---|---|
+| Max New Tokens | Maximum tokens to generate | 256–512 |
+| Diffusion Steps | More steps → higher quality, slower | 16–48 |
+| Temperature | Randomness (0 = greedy) | 0.05–0.3 |
+| Top-p | Nucleus sampling cutoff | 0.95 |
+| Top-k | Top-k sampling (0 = auto) | 0 |
+| Diffusion Algorithm | Token selection strategy | `low_confidence` |
+| Algorithm Temperature | Mask selection aggressiveness | 0.1 |
+
+---
+
+## 🗂️ Project Structure
+
 ```
-bash examples/run_sft_tulu3.sh 8 output
+Dream-main/
+├── app.py               # Main Gradio application (this fork)
+├── environment.yaml     # Conda environment spec
+├── README.md            # This file
+├── debug.py             # Standalone debug/test script
+├── demo_*.py            # Original upstream demo scripts
+├── src/                 # Source utilities (upstream)
+└── eval/                # Evaluation scripts (upstream)
 ```
 
-## Citation
-```
-@article{ye2025dream,
-  title={Dream 7B: Diffusion Large Language Models},
-  author={Ye, Jiacheng and Xie, Zhihui and Zheng, Lin and Gao, Jiahui and Wu, Zirui and Jiang, Xin and Li, Zhenguo and Kong, Lingpeng},
-  journal={arXiv preprint arXiv:2508.15487},
-  year={2025}
-}
-```
+---
+
+## 📄 License
+
+See [LICENSE](LICENSE). Original model and code by [DreamLM](https://github.com/DreamLM/Dream).
